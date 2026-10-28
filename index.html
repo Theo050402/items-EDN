@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suivi des items EDN</title>
+<meta name="description" content="Suivi de révision des 367 items du programme EDN, avec progression sauvegardée automatiquement.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23264653'/%3E%3Crect x='6' y='13' width='20' height='9' fill='%23e9c46a'/%3E%3C/svg%3E">
+<style>
+:root {
+  --paper: #fdf8ee;
+  --field: #ffffff;
+  --l-major: #ecdcc0;
+  --l-minor: #f6edd9;
+  --l-vert: #f0e4cb;
+  --ink: #264653;
+  --ink-2: #4d6a76;
+  --red: #e76f51;
+  --coral: #f4a261;
+  --hl: #e9c46a;
+  --hl-text: #264653;
+  --tick: #ffffff;
+  --display: "DejaVu Serif", Cambria, "Times New Roman", serif;
+  --body: "DejaVu Sans", Verdana, Tahoma, sans-serif;
+  --margin: 60px;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #172e37; --field: #1f3b46;
+    --l-major: #2c4a57; --l-minor: #213d48; --l-vert: #26434f;
+    --ink: #fbeed4; --ink-2: #c5bba4; --red: #f08a6e;
+    --hl: #e9c46a; --hl-text: #264653; --tick: #172e37;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #172e37; --field: #1f3b46;
+  --l-major: #2c4a57; --l-minor: #213d48; --l-vert: #26434f;
+  --ink: #fbeed4; --ink-2: #c5bba4; --red: #f08a6e;
+  --hl: #e9c46a; --hl-text: #264653; --tick: #172e37;
+  color-scheme: dark;
+}
+@media (max-width: 640px) { :root { --margin: 48px; } }
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 140px; }
+body {
+  margin: 0; overflow-x: hidden;
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(to bottom, var(--l-major) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--l-minor) 1px, transparent 1px),
+    linear-gradient(to right, var(--l-vert) 1px, transparent 1px);
+  background-size: 100% 32px, 100% 8px, 32px 100%;
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; touch-action: manipulation; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; border-radius: 4px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip { position: absolute; left: 16px; top: -60px; background: var(--ink); color: var(--paper); padding: 10px 14px; border-radius: 4px; z-index: 1000; }
+.skip:focus { top: 12px; }
+
+/* ---------- En-tête ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 2px solid var(--ink);
+}
+.topbar-inner { max-width: 1160px; margin: 0 auto; padding: 12px 16px 14px; }
+.title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+h1 { margin: 0; font-family: var(--display); font-size: 1.25rem; font-weight: 700; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.logo { width: 30px; height: 30px; flex: none; }
+.actions { display: flex; align-items: center; gap: 8px; }
+.icon-btn {
+  width: 44px; height: 44px; display: grid; place-items: center;
+  background: var(--field); border: 1.5px solid var(--ink); border-radius: 6px;
+  transition: background-color .2s var(--ease);
+}
+.icon-btn:hover { background: var(--hl); color: var(--hl-text); }
+.icon-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.saved { display: inline-flex; align-items: center; gap: 6px; font-size: .8125rem; color: var(--ink-2); margin-right: 4px; }
+.saved i { width: 8px; height: 8px; background: var(--ink-2); border-radius: 50%; }
+
+@media (max-width: 640px) {
+  h1 { font-size: 1rem; }
+  .saved span { display: none; }
+  .actions { gap: 6px; }
+}
+@media (max-width: 440px) { .logo { display: none; } }
+.global { margin-top: 10px; }
+.global-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.big { font-family: var(--display); font-size: 1.75rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.big small { font-family: var(--body); font-size: .9375rem; font-weight: 400; letter-spacing: 0; color: var(--ink-2); }
+.pct { font-family: var(--display); font-weight: 700; font-size: 1.125rem; font-variant-numeric: tabular-nums; }
+.bar { height: 18px; border: 1.5px solid var(--ink); background: var(--field); border-radius: 3px; overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--coral); border-right: 2px solid var(--ink); transform-origin: left center; transform: scaleX(0); transition: transform .55s var(--ease); }
+
+/* ---------- Mise en page ---------- */
+.layout { max-width: 1160px; margin: 0 auto; padding: 20px 16px 96px; display: grid; grid-template-columns: 1fr; gap: 24px; }
+.layout > * { min-width: 0; }
+.side { display: none; }
+@media (min-width: 960px) {
+  .layout { grid-template-columns: 270px 1fr; gap: 36px; }
+  .side { display: block; position: sticky; top: 148px; align-self: start; max-height: calc(100vh - 168px); overflow: auto; padding-right: 6px; }
+}
+.side h2 { font-family: var(--display); font-size: 1.125rem; font-weight: 700; margin: 0 0 10px; }
+.nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; border-top: 1.5px solid var(--ink); }
+.nav a {
+  display: flex; justify-content: space-between; gap: 10px; padding: 10px 4px;
+  border-bottom: 1px solid var(--l-major); text-decoration: none; color: var(--ink);
+  font-size: .9375rem; line-height: 1.35;
+}
+.nav a:hover span { text-decoration: underline; text-underline-offset: 3px; }
+.nav a b { font-family: var(--display); font-variant-numeric: tabular-nums; font-weight: 500; color: var(--ink-2); flex: none; }
+.nav a.active span { background: var(--hl); color: var(--hl-text); box-decoration-break: clone; -webkit-box-decoration-break: clone; padding: 0 .25em; margin: 0 -.25em; }
+.nav a.complete b { color: var(--ink); }
+
+.tools { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 18px; }
+.search { position: relative; flex: 1 1 240px; }
+.search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; stroke: var(--ink-2); fill: none; stroke-width: 1.8; stroke-linecap: round; pointer-events: none; }
+.search input {
+  width: 100%; height: 44px; padding: 0 14px 0 40px;
+  background: var(--field); border: 1.5px solid var(--ink); border-radius: 6px;
+}
+.search input::placeholder { color: var(--ink-2); opacity: 1; }
+.seg { display: inline-flex; border: 1.5px solid var(--ink); border-radius: 6px; overflow: hidden; background: var(--field); }
+.seg button { min-height: 41px; padding: 0 16px; border: 0; background: transparent; font-family: var(--display); font-weight: 500; transition: background-color .2s var(--ease); }
+.seg button + button { border-left: 1.5px solid var(--ink); }
+.seg button:hover { background: var(--l-minor); }
+.seg button[aria-pressed="true"] { background: var(--hl); color: var(--hl-text); font-weight: 700; }
+
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 16px 10px; margin: 0 -16px 8px; scrollbar-width: thin; }
+@media (min-width: 960px) { .chips { display: none; } }
+.chips a {
+  flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px;
+  background: var(--field); border: 1.5px solid var(--ink); border-radius: 6px;
+  text-decoration: none; color: var(--ink); font-family: var(--display); font-size: .9375rem; font-weight: 500; white-space: nowrap;
+}
+.chips a b { font-variant-numeric: tabular-nums; color: var(--ink-2); font-weight: 500; }
+
+/* ---------- Feuille ---------- */
+.theme { margin-bottom: 36px; }
+.theme-head { display: flex; align-items: stretch; border-bottom: 2px solid var(--ink); }
+.th { margin: 0; flex: 1; min-width: 0; font: inherit; }
+.theme-toggle {
+  width: 100%; min-height: 72px; display: grid; grid-template-columns: var(--margin) 1fr 32px; align-items: center;
+  text-align: left; background: transparent; border: 0; padding: 12px 0; font: inherit;
+}
+.theme-toggle:hover .t { text-decoration: underline; text-underline-offset: 4px; }
+.cnt { padding-right: 14px; text-align: right; font-family: var(--display); font-weight: 700; font-size: .9375rem; font-variant-numeric: tabular-nums; }
+.theme-title { padding-left: 14px; display: block; min-width: 0; }
+.t { display: block; font-family: var(--display); font-size: 1.2rem; font-weight: 700; line-height: 1.25; }
+.mini { display: block; margin-top: 8px; width: min(220px, 100%); height: 8px; border: 1.5px solid var(--ink); background: var(--field); border-radius: 2px; overflow: hidden; }
+.mini i { display: block; height: 100%; background: var(--coral); transform-origin: left; transform: scaleX(0); transition: transform .45s var(--ease); }
+.chev { width: 20px; height: 20px; stroke: var(--ink); fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform .25s var(--ease); justify-self: center; }
+.theme.collapsed .chev { transform: rotate(-90deg); }
+.text-btn {
+  align-self: center; min-height: 44px; padding: 0 12px; margin-left: 4px; background: transparent;
+  border: 1.5px solid var(--ink); border-radius: 6px; font-family: var(--display); font-size: .9375rem; font-weight: 500; white-space: nowrap;
+  transition: background-color .2s var(--ease);
+}
+.text-btn:hover { background: var(--hl); color: var(--hl-text); }
+@media (max-width: 640px) { .text-btn { padding: 0 8px; font-size: .8125rem; max-width: 96px; white-space: normal; line-height: 1.15; } }
+
+.theme-body { position: relative; }
+.theme.collapsed .theme-body { display: none; }
+.theme-body::before { content: ""; position: absolute; left: var(--margin); top: 0; bottom: 0; width: 2px; background: var(--red); }
+
+.items { list-style: none; margin: 0; padding: 0; position: relative; }
+.item { border-bottom: 1px solid var(--l-major); }
+.item[hidden] { display: none; }
+.item label {
+  display: grid; grid-template-columns: var(--margin) 28px 1fr; align-items: start;
+  padding: 12px 8px 12px 0; min-height: 56px; cursor: pointer; position: relative;
+  transition: background-color .2s var(--ease);
+}
+.item label:hover { background: color-mix(in srgb, var(--l-minor) 70%, transparent); }
+.num { padding: 2px 14px 0 0; text-align: right; font-family: var(--display); font-weight: 500; font-size: .9375rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.item input { position: absolute; left: calc(var(--margin) + 6px - 8px); top: 4px; width: 44px; height: 44px; margin: 0; opacity: 0; cursor: pointer; }
+.box {
+  margin: 1px 0 0 14px; width: 26px; height: 26px; display: grid; place-items: center;
+  border: 2px solid var(--ink); border-radius: 4px; background: var(--field);
+  transition: background-color .2s var(--ease), transform .2s var(--ease);
+}
+.box svg { width: 16px; height: 16px; stroke: var(--tick); fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; stroke-dashoffset: 24; transition: stroke-dashoffset .3s var(--ease) .08s; }
+.item input:checked ~ .box { background: var(--ink); }
+.item input:checked ~ .box svg { stroke-dashoffset: 0; }
+.item input:focus-visible ~ .box { outline: 3px solid var(--ink); outline-offset: 3px; }
+.item label:active .box { transform: scale(.92); }
+.txt { padding-left: 14px; max-width: 64ch; min-width: 0; }
+.name {
+  background-image: linear-gradient(transparent 12%, var(--hl) 12%, var(--hl) 92%, transparent 92%);
+  background-repeat: no-repeat; background-size: 0% 100%;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  padding: 0 .2em; margin: 0 -.2em;
+  transition: background-size .55s var(--ease), color .2s var(--ease);
+}
+.item.done .name { background-size: 100% 100%; color: var(--hl-text); }
+.when { display: block; margin-top: 3px; font-size: .8125rem; color: var(--ink-2); }
+.theme-empty { padding: 20px 14px 20px calc(var(--margin) + 14px); color: var(--ink-2); }
+
+.complete { margin: 0 0 24px; font-family: var(--display); font-size: 1.25rem; font-weight: 700; }
+.complete span { background: linear-gradient(transparent 12%, var(--hl) 12%, var(--hl) 92%, transparent 92%); color: var(--hl-text); padding: 0 .3em; margin: 0 -.3em; }
+.complete[hidden] { display: none; }
+.empty { padding: 40px 0; color: var(--ink-2); max-width: 46ch; }
+
+/* ---------- Toast / bandeau ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 24px); opacity: 0; pointer-events: none;
+  display: flex; align-items: center; gap: 12px; max-width: calc(100vw - 32px);
+  background: var(--ink); color: var(--paper); padding: 8px 8px 8px 16px; border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(38, 70, 83, .3);
+  transition: transform .25s var(--ease), opacity .25s var(--ease); z-index: 90;
+}
+.toast.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+.toast button { min-height: 44px; padding: 0 12px; background: var(--hl); color: var(--hl-text); border: 0; font-family: var(--display); font-weight: 700; border-radius: 4px; }
+.banner { background: var(--hl); color: var(--hl-text); padding: 10px 16px; text-align: center; font-size: .9375rem; border-bottom: 2px solid var(--ink); }
+.banner[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; transition-delay: 0s !important; scroll-behavior: auto !important; }
+}
+.seg button, .chips a, .text-btn, .toast button, .num, .nav a b { font-family: var(--body); font-weight: 400; }
+.seg button[aria-pressed="true"], .toast button { font-weight: 700; }
+</style>
+</head>
+<body>
+<a class="skip" href="#contenu">Aller au contenu</a>
+<div class="banner" id="banner" role="status" hidden>Le navigateur bloque le stockage : la progression ne sera pas conservée. Cliquez sur « Exporter » pour la sauvegarder dans un fichier.</div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="title-row">
+      <h1>
+        <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="6" fill="var(--ink)"/><rect x="6" y="13" width="20" height="9" fill="var(--hl)"/><path d="M6 24.5h20" stroke="var(--paper)" stroke-width="1.5"/></svg>
+        Suivi des items EDN
+      </h1>
+      <div class="actions">
+        <span class="saved" aria-live="polite"><i></i><span id="savedTxt">Sauvegarde auto</span></span>
+        <button class="icon-btn" id="btnExport" type="button" aria-label="Exporter la progression" title="Exporter la progression">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        </button>
+        <button class="icon-btn" id="btnImport" type="button" aria-label="Importer une progression" title="Importer une progression">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M5 21h14"/></svg>
+        </button>
+        <button class="icon-btn" id="btnTheme" type="button" aria-label="Passer en mode clair ou sombre" title="Clair / sombre">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+        </button>
+        <input type="file" id="fileIn" accept="application/json,.json" hidden>
+      </div>
+    </div>
+
+    <div class="global">
+      <div class="global-meta">
+        <div class="big"><span id="gDone">0</span> <small>sur <span id="gTotal">367</span> items validés</small></div>
+        <div class="pct" id="gPct">0 %</div>
+      </div>
+      <div class="bar" role="progressbar" aria-label="Progression globale" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="gBar"><i></i></div>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="side" aria-label="Sommaire des thèmes">
+    <h2>Sommaire</h2>
+    <ul class="nav" id="nav"></ul>
+  </nav>
+  <main id="contenu">
+    <div class="tools">
+      <div class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <label class="sr-only" for="q">Rechercher un item</label>
+        <input id="q" type="search" placeholder="Rechercher par nom ou par numéro" autocomplete="off">
+      </div>
+      <div class="seg" role="group" aria-label="Filtrer les items">
+        <button type="button" data-f="all" aria-pressed="true">Tous</button>
+        <button type="button" data-f="todo" aria-pressed="false">À réviser</button>
+        <button type="button" data-f="done" aria-pressed="false">Validés</button>
+      </div>
+    </div>
+    <nav class="chips" id="chips" aria-label="Thèmes"></nav>
+    <p class="complete" id="complete" hidden><span>Les 367 items sont validés.</span></p>
+    <div id="themes"></div>
+    <p class="empty" id="empty" hidden>Aucun item ne correspond. Modifiez la recherche ou choisissez « Tous » pour tout afficher.</p>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button type="button" id="toastUndo">Annuler</button></div>
+
+<script>
+const DATA = [{"title": "Apprentissage de l'exercice médical et coopération interprofessionnelle", "items": [[1, "La relation médecin-malade. La communication avec le patient et son entourage. L'annonce d'une maladie grave ou létale ou d'un dommage associé aux soins. La formation du patient. La personnalisation de la prise en charge médicale."], [2, "Les valeurs professionnelles du médecin et des autres professions de santé"], [3, "Le raisonnement et la décision en médecine. La médecine fondée sur les preuves (Evidence Based Medicine, EBM). La décision médicale partagée. La controverse."], [4, "Qualité et sécurité des soins. La sécurité du patient. La gestion des risques. Les événements indésirables associés aux soins (EIAS). Démarche qualité et évaluation des pratiques professionnelles"], [5, "La gestion des erreurs et des plaintes ; l'aléa thérapeutique"], [6, "L'organisation de l'exercice clinique et les méthodes qui permettent de sécuriser le parcours du patient"], [7, "Les droits individuels et collectifs du patient"], [8, "Les discriminations"], [9, "Introduction à l'éthique médicale"], [10, "Approches transversales du corps"], [11, "Violences et santé"], [12, "Violences sexuelles"], [13, "Certificats médicaux. Décès et législation."], [14, "La mort"], [15, "Soins psychiatriques sans consentement"], [16, "Organisation du système de soins. Sa régulation. Les indicateurs. Parcours de soins."], [17, "Télémédecine, télésanté et téléservices en santé"], [18, "Santé et numérique"], [19, "La sécurité sociale. L'assurance maladie. Les assurances complémentaires. La complémentaire santé solidaire (CSS). Protection sociale. Consommation médicale et économie de la santé."], [20, "La méthodologie de la recherche en santé"], [21, "Mesure de l'état de santé de la population"], [22, "Maladies rares"]]}, {"title": "De la conception à la naissance, pathologie de la femme, hérédité, enfant, adolescent", "items": [[23, "Grossesse normale"], [24, "Principales complications de la grossesse"], [25, "Grossesse extra-utérine (GEU)"], [26, "Douleur abdominale aiguë chez une femme enceinte"], [27, "Prévention des risques fœtaux : infection, médicaments, toxiques, irradiation"], [28, "Connaître les particularités de l'infection urinaire au cours de la grossesse"], [29, "Connaître les principaux risques professionnels pour la maternité, liés au travail de la mère"], [30, "Prématurité et retard de croissance intra-utérin (RCIU) : facteurs de risque et prévention"], [31, "Accouchement, délivrance et suites de couches normales"], [32, "Évaluation et soins du nouveau-né à terme"], [33, "Allaitement maternel"], [34, "Suites de couches pathologiques : pathologie maternelle dans les 40 jours"], [35, "Anomalies du cycle menstruel et métrorragies"], [36, "Contraception"], [37, "Interruption volontaire de grossesse (IVG)"], [38, "Infertilité du couple : conduite de la première consultation"], [39, "Assistance médicale à la procréation (AMP) : principaux aspects biologiques, médicaux et éthiques"], [40, "Algies pelviennes chez la femme"], [41, "Endométriose"], [42, "Aménorrhée"], [43, "Hémorragie génitale chez la femme"], [44, "Tuméfaction pelvienne chez la femme"], [45, "Spécificités des maladies génétiques"], [46, "Médecine génomique"], [47, "Suivi d'un nourrisson, d'un enfant et d'un adolescent normal. Dépistage des anomalies orthopédiques, des troubles visuels, auditifs et dentaires. Examens de santé obligatoires. Médecine scolaire. Mortalité et morbidité infantiles."], [48, "Alimentation et besoins nutritionnels du nourrisson et de l'enfant"], [49, "Puberté normale et pathologique"], [50, "Pathologie génito-scrotale chez le garçon et chez l'homme"], [51, "Troubles de la miction chez l'enfant"], [52, "Strabisme et amblyopie de l'enfant"], [53, "Retard de croissance staturo-pondérale"], [54, "Boiterie chez l'enfant"], [55, "Développement psychomoteur du nourrisson et de l'enfant"]]}, {"title": "Maturation, vulnérabilité, santé mentale, conduites addictives", "items": [[56, "L'enfant handicapé"], [57, "Maltraitance, enfants en danger, protection maternelle et infantile"], [58, "Sexualité normale et ses troubles"], [59, "Sujets en situation de précarité"], [60, "Connaître les facteurs de risque, prévention, dépistage des troubles psychiques de l'enfant à la personne âgée"], [61, "Connaître les bases des classifications des troubles mentaux de l'enfant à la personne âgée"], [62, "Décrire l'organisation de l'offre de soins en psychiatrie, de l'enfant à la personne âgée"], [63, "Trouble schizophrénique"], [64, "Trouble bipolaire"], [65, "Trouble délirant persistant"], [66, "Diagnostiquer : trouble dépressif, trouble anxieux généralisé (TAG), trouble panique, trouble phobique, trouble obsessionnel compulsif (TOC), état de stress post-traumatique (PTSD), trouble de l'adaptation, trouble de la personnalité."], [67, "Troubles envahissants du développement (TED)"], [68, "Troubles du comportement de l'adolescent"], [69, "Troubles psychiques de la grossesse et du post-partum"], [70, "Troubles psychiques du sujet âgé"], [71, "Troubles des conduites alimentaires (TCA)"], [72, "Troubles à symptomatologie somatique et apparentés"], [73, "Différents types de techniques psychothérapeutiques"], [74, "Prescription et surveillance des psychotropes"], [75, "Addiction au tabac"], [76, "Addiction à l'alcool"], [77, "Addiction aux médicaments psychotropes"], [78, "Addiction au cannabis, cocaïne, amphétamines, opiacés, drogues de synthèse"], [79, "Addictions comportementales"], [80, "Dopage et conduites dopantes"]]}, {"title": "Perception, système nerveux, revêtement cutané", "items": [[81, "Altération chronique de la vision"], [82, "Altération aiguë de la vision"], [83, "Infections et inflammations oculaires"], [84, "Glaucomes"], [85, "Troubles de la réfraction"], [86, "Pathologie des paupières"], [87, "Épistaxis"], [88, "Trouble aigu de la parole et dysphonie"], [89, "Altération de la fonction auditive"], [90, "Pathologie des glandes salivaires"], [91, "Déficit neurologique récent"], [92, "Déficit moteur et/ou sensitif des membres"], [93, "Compression médullaire non traumatique et syndrome de la queue de cheval"], [94, "Rachialgie"], [95, "Radiculalgie et syndrome canalaire"], [96, "Neuropathies périphériques"], [97, "Polyradiculonévrite aiguë inflammatoire (syndrome de Guillain-Barré)"], [98, "Myasthénie"], [99, "Migraine, névralgie du trijumeau et algies de la face"], [100, "Céphalée inhabituelle aiguë et chronique"], [101, "Paralysie faciale"], [102, "Diplopie"], [103, "Vertige"], [104, "Sclérose en plaques (SEP)"], [105, "Épilepsie"], [106, "Maladie de Parkinson"], [107, "Mouvements anormaux"], [108, "Confusion, démences"], [109, "Troubles de la marche et de l'équilibre"], [110, "Troubles du sommeil"], [111, "Dermatoses faciales : acné, rosacée, dermatite séborrhéique"], [112, "Dermatose bulleuse"], [113, "Hémangiomes et malformations vasculaires cutanées"], [114, "Exanthème et érythrodermie"], [115, "Toxidermies"], [116, "Prurit"], [117, "Psoriasis"]]}, {"title": "Handicap, vieillissement, dépendance, douleur, soins palliatifs", "items": [[118, "La personne handicapée : bases de l'évaluation fonctionnelle et thérapeutique"], [119, "Soin et accompagnement dans la maladie chronique et le handicap"], [120, "Complications de l'immobilité et du décubitus. Prévention et prise en charge"], [121, "Handicap psychique"], [122, "Principales techniques de rééducation et de réadaptation"], [123, "Vieillissement normal : aspects biologiques, fonctionnels et relationnels. Données épidémiologiques et sociologiques. Prévention du vieillissement pathologique"], [124, "Ménopause, insuffisance ovarienne prématurée, andropause, déficit androgénique lié à l'âge"], [125, "Troubles de la miction et incontinence urinaire de l'adulte et du sujet âgé"], [126, "Trouble de l'érection"], [127, "Hypertrophie bénigne de la prostate (HBP)"], [128, "Ostéopathies fragilisantes"], [129, "Arthrose"], [130, "La personne âgée malade : particularités sémiologiques, psychologiques et thérapeutiques"], [131, "Troubles de la marche et de l'équilibre"], [132, "Troubles cognitifs du sujet âgé"], [133, "Autonomie et dépendance chez le sujet âgé"], [134, "Bases neurophysiologiques, mécanismes physiopathologiques d'une douleur aiguë et d'une douleur chronique"], [135, "Thérapeutiques antalgiques, médicamenteuses et non médicamenteuses"], [136, "Anesthésie locale, locorégionale et générale"], [137, "Douleur chez l'enfant : évaluation et traitements antalgiques"], [138, "Douleur chez la personne vulnérable"], [139, "Soins palliatifs pluridisciplinaires chez un malade en phase palliative ou terminale d'une maladie grave, chronique ou létale (1). Principaux repères cliniques. Modalités d'organisation des équipes, en établissement de santé et en ambulatoire."], [140, "Soins palliatifs pluridisciplinaires chez un malade en phase palliative ou terminale d'une maladie grave, chronique ou létale (2). Accompagnement de la personne malade et de son entourage. Principaux repères éthiques."], [141, "Soins palliatifs pluridisciplinaires. La sédation pour détresse en phase terminale et dans des situations spécifiques et complexes en fin de vie. Réponse à la demande d'euthanasie ou de suicide assisté."], [142, "Connaître les aspects spécifiques des soins palliatifs en pédiatrie"], [143, "Connaître les aspects spécifiques des soins palliatifs en réanimation"], [144, "Deuil normal et pathologique"]]}, {"title": "Maladies transmissibles, risques sanitaires, santé au travail", "items": [[145, "Surveillance des maladies infectieuses transmissibles"], [146, "Vaccinations"], [147, "Fièvre aiguë chez l'enfant et l'adulte"], [148, "Infections naso-sinusiennes de l'adulte et de l'enfant"], [149, "Angines de l'adulte et de l'enfant et rhinopharyngites de l'enfant"], [150, "Otites infectieuses de l'adulte et de l'enfant"], [151, "Méningite, méningoencéphalite, abcès cérébral chez l'adulte et l'enfant"], [152, "Endocardite infectieuse"], [153, "Surveillance des porteurs de valve et prothèses vasculaires"], [154, "Infections broncho-pulmonaires communautaires de l'adulte et de l'enfant"], [155, "Infections cutanéo-muqueuses et des phanères, bactériennes et mycosiques de l'adulte et de l'enfant"], [156, "Infections ostéo-articulaires (IOA) de l'enfant et de l'adulte"], [157, "Septicémie / Bactériémie / Fongémie de l'adulte et de l'enfant"], [158, "Sepsis et choc septique de l'enfant et de l'adulte"], [159, "Tuberculose de l'adulte et de l'enfant"], [160, "Tétanos"], [161, "Infections urinaires de l'enfant et de l'adulte"], [162, "Infections sexuellement transmissibles (IST) : gonococcies, chlamydioses, syphilis, papillomavirus humain (HPV), trichomonose"], [163, "Coqueluche"], [164, "Exanthèmes fébriles de l'enfant"], [165, "Oreillons"], [166, "Grippe"], [167, "Hépatites virales"], [168, "Infections à herpès virus du sujet immunocompétent"], [169, "Infections à VIH"], [170, "Paludisme"], [171, "Gale et pédiculose"], [172, "Parasitoses digestives : giardiose, amoebose, téniasis, ascaridiose, oxyurose, anguillulose, cryptosporidiose"], [173, "Zoonoses"], [174, "Pathologie infectieuse chez les migrants adultes et enfants"], [175, "Voyage en pays tropical de l'adulte et de l'enfant : conseils avant le départ, pathologies du retour : fièvre, diarrhée, manifestations cutanées"], [176, "Diarrhées infectieuses de l'adulte et de l'enfant"], [177, "Prescription et surveillance des anti-infectieux chez l'adulte et l'enfant"], [178, "Risques émergents, bioterrorisme, maladies hautement transmissibles"], [179, "Risques sanitaires liés à l'eau et à l'alimentation. Toxi-infections alimentaires (TIAC)"], [180, "Risques sanitaires liés aux irradiations. Radioprotection"], [181, "La sécurité sanitaire des produits destinés à l'homme. La veille sanitaire."], [182, "Environnement professionnel et santé au travail"], [183, "Organisation de la médecine du travail. Prévention des risques professionnels."], [184, "Accidents du travail et maladies professionnelles"]]}, {"title": "Inflammation, immunopathologie, poumon, sang", "items": [[185, "Réaction inflammatoire : aspects biologiques et cliniques. Conduite à tenir"], [186, "Hypersensibilités et allergies chez l'enfant et l'adulte : aspects physiopathologiques, épidémiologiques, diagnostiques et principes de traitement"], [187, "Hypersensibilités et allergies cutanéo-muqueuses chez l'enfant et l'adulte. Urticaire, dermatites atopique et de contact, conjonctivite allergique"], [188, "Hypersensibilité et allergies respiratoires chez l'enfant et chez l'adulte. Asthme, rhinite"], [189, "Déficit immunitaire"], [190, "Fièvre prolongée"], [191, "Fièvre chez un patient immunodéprimé"], [192, "Pathologies auto-immunes : aspects épidémiologiques, diagnostiques et principes de traitement"], [193, "Connaître les principaux types de vascularite systémique : les organes cibles, les outils diagnostiques et les moyens thérapeutiques"], [194, "Lupus systémique. Syndrome des anti-phospholipides (SAPL)"], [195, "Artérite à cellules géantes"], [196, "Polyarthrite rhumatoïde (PR)"], [197, "Spondyloarthrite"], [198, "Arthropathie microcristalline"], [199, "Syndrome douloureux régional complexe (ex-algodystrophie)"], [200, "Douleur et épanchement articulaire. Arthrite d'évolution récente."], [201, "Transplantation d'organes : aspects épidémiologiques et immunologiques ; principes de traitement ; complications et pronostic ; aspects éthiques et légaux. Prélèvements d'organes et législation."], [202, "Biothérapies et thérapies ciblées"], [203, "Dyspnée aiguë et chronique"], [204, "Toux chez l'enfant et chez l'adulte (avec le traitement)"], [205, "Hémoptysie"], [206, "Épanchement pleural liquidien"], [207, "Opacités et masses intra-thoraciques chez l'enfant et chez l'adulte"], [208, "Insuffisance respiratoire chronique chez l'adulte"], [209, "Bronchopneumopathie chronique obstructive (BPCO)"], [210, "Pneumopathie interstitielle diffuse (PID)"], [211, "Sarcoïdose"], [212, "Hémogramme chez l'adulte et l'enfant : indications et interprétation"], [213, "Anémie chez l'adulte et l'enfant"], [214, "Thrombopénie chez l'adulte et l'enfant"], [215, "Purpuras chez l'adulte et l'enfant"], [216, "Syndrome hémorragique d'origine hématologique"], [217, "Syndrome mononucléosique"], [218, "Éosinophilie"], [219, "Pathologie du fer chez l'adulte et l'enfant"], [220, "Adénopathie superficielle de l'adulte et de l'enfant"]]}, {"title": "Circulation, métabolismes", "items": [[221, "Athérome : épidémiologie et physiopathologie. Le malade polyathéromateux"], [222, "Facteurs de risque cardio-vasculaire et prévention"], [223, "Dyslipidémies"], [224, "Hypertension artérielle (HTA) de l'adulte et de l'enfant"], [225, "Artériopathie oblitérante de l'aorte (AOMI), des artères viscérales et des membres inférieurs ; anévrysmes"], [226, "Thrombose veineuse profonde (TVP) et embolie pulmonaire (EP)"], [227, "Insuffisance veineuse chronique et varices"], [228, "Ulcère de jambe"], [229, "Surveillance et complications des abords veineux"], [230, "Douleur thoracique aiguë"], [231, "Électrocardiogramme (ECG) : indications et interprétations"], [232, "Fibrillation atriale (FA)"], [233, "Valvulopathies"], [234, "Insuffisance cardiaque de l'adulte"], [235, "Péricardite aiguë"], [236, "Troubles de la conduction intracardiaque"], [237, "Palpitations"], [238, "Souffle cardiaque chez l'enfant"], [239, "Acrosyndromes (phénomène de Raynaud, érythermalgie, acrocyanose, engelures, ischémie digitale)"], [240, "Hypoglycémie chez l'adulte et l'enfant"], [241, "Goitre, nodules thyroïdiens et cancers thyroïdiens"], [242, "Hyperthyroïdie"], [243, "Hypothyroïdie"], [244, "Adénome hypophysaire"], [245, "Insuffisance surrénale chez l'adulte et l'enfant"], [246, "Gynécomastie"], [247, "Diabète sucré de types 1 et 2 de l'enfant et de l'adulte. Complications"], [248, "Prévention primaire par la nutrition chez l'adulte et chez l'enfant"], [249, "Modifications thérapeutiques du mode de vie (alimentation et activité physique) chez l'adulte et l'enfant"], [250, "Dénutrition chez l'adulte et l'enfant"], [251, "Amaigrissement à tous les âges"], [252, "Troubles nutritionnels chez le sujet âgé"], [253, "Obésité de l'enfant et de l'adulte"], [254, "Besoins nutritionnels et grossesse"], [255, "Diabète gestationnel"], [256, "Aptitude au sport chez l'adulte et l'enfant ; besoins nutritionnels chez le sportif"], [257, "Œdèmes des membres inférieurs localisés ou généralisés"], [258, "Élévation de la créatininémie"], [259, "Protéinurie et syndrome néphrotique chez l'adulte et chez l'enfant"], [260, "Hématurie"], [261, "Néphropathie glomérulaire"], [262, "Néphropathies interstitielles"], [263, "Néphropathies vasculaires"], [264, "Insuffisance rénale chronique chez l'adulte et l'enfant"], [265, "Lithiase urinaire"], [266, "Polykystose rénale"], [267, "Troubles de l'équilibre acido-basique et désordres hydro-électrolytiques : troubles acide-base (acidose métabolique, acidose respiratoire, alcalose métabolique et alcalose respiratoire), hyperkaliémie, hypokaliémie, hypernatrémie, hyponatrémie"], [268, "Hypercalcémie"], [269, "Douleurs abdominales aiguës chez l'enfant et chez l'adulte"], [270, "Douleurs lombaires aiguës chez l'enfant et chez l'adulte"], [271, "Reflux gastro-œsophagien (RGO) chez le nourrisson, chez l'enfant et chez l'adulte. Hernie hiatale"], [272, "Ulcère gastrique et duodénal (UGD). Gastrite."], [273, "Dysphagie"], [274, "Vomissements du nourrisson, de l'enfant et de l'adulte"], [275, "Splénomégalie"], [276, "Hépatomégalie et masse abdominale"], [277, "Lithiase biliaire"], [278, "Ictère"], [279, "Cirrhose et complications"], [280, "Ascite"], [281, "Pancréatite chronique"], [282, "Maladies inflammatoires chroniques de l'intestin (MICI)"], [283, "Constipation chez l'enfant et l'adulte (avec le traitement)"], [284, "Colopathie fonctionnelle"], [285, "Diarrhée chronique chez l'adulte et l'enfant"], [286, "Diarrhée aiguë et déshydratation chez le nourrisson, l'enfant et l'adulte"], [287, "Diverticulose colique et diverticulite aiguë du sigmoïde"], [288, "Pathologie hémorroïdaire"], [289, "Hernie pariétale chez l'enfant et l'adulte"]]}, {"title": "Cancérologie, onco-hématologie", "items": [[290, "Épidémiologie, facteurs de risque, prévention et dépistage des cancers"], [291, "Cancer : cancérogenèse, oncogénétique"], [292, "Diagnostic des cancers : signes d'appel et investigations paracliniques ; caractérisation du stade ; pronostic"], [293, "Le médecin préleveur de cellules et/ou de tissus pour des examens d'anatomie et cytologie pathologiques : connaître les principes de réalisation, transmission et utilisation des prélèvements à visée sanitaire et de recherche"], [294, "Traitement des cancers : principales modalités, classes thérapeutiques et leurs complications majeures. La décision thérapeutique pluridisciplinaire et l'information du malade"], [295, "Prise en charge et accompagnement d'un malade atteint de cancer en abordant les problématiques techniques, relationnelles, sociales et éthiques. Traitements symptomatiques. Modalités de surveillance."], [296, "Agranulocytose médicamenteuse : conduite à tenir"], [297, "Cancer de l'enfant : particularités épidémiologiques, diagnostiques et thérapeutiques"], [298, "Tumeurs de la cavité buccale, naso-sinusiennes et du cavum, et des voies aérodigestives supérieures"], [299, "Tumeurs intracrâniennes"], [300, "Tumeurs du col utérin, tumeur du corps utérin"], [301, "Tumeurs du côlon et du rectum"], [302, "Tumeurs cutanées, épithéliales et mélaniques"], [303, "Tumeurs de l'estomac"], [304, "Tumeurs du foie, primitives et secondaires"], [305, "Tumeurs de l'œsophage"], [306, "Tumeurs de l'ovaire"], [307, "Tumeurs des os primitives et secondaires"], [308, "Tumeurs du pancréas"], [309, "Tumeurs du poumon, primitives et secondaires"], [310, "Tumeurs de la prostate"], [311, "Tumeurs du rein de l'adulte"], [312, "Tumeurs du sein"], [313, "Tumeurs du testicule"], [314, "Tumeurs vésicales"], [315, "Leucémies aiguës"], [316, "Syndromes myélodysplasiques"], [317, "Syndromes myéloprolifératifs"], [318, "Leucémies lymphoïdes chroniques (LLC)"], [319, "Lymphomes malins"], [320, "Myélome multiple des os"]]}, {"title": "Bon usage du médicament et thérapeutiques non médicamenteuses", "items": [[321, "Principe du bon usage du médicament"], [322, "La décision thérapeutique personnalisée : bon usage dans des situations à risque"], [323, "Analyser et utiliser les résultats des études cliniques dans la perspective du bon usage : analyse critique, recherche clinique et niveaux de preuve"], [324, "Éducation thérapeutique, observance et automédication"], [325, "Identification et gestion des risques liés aux médicaments et aux biomatériaux, risque iatrogène, erreur médicamenteuse"], [326, "Cadre réglementaire de la prescription thérapeutique et recommandations pour le bon usage"], [327, "Principes de la médecine intégrative, utilité et risques des interventions non médicamenteuses et des thérapies complémentaires"], [328, "Thérapeutiques non médicamenteuses et dispositifs médicaux"], [329, "Transfusion sanguine et produits dérivés du sang : indications, complications. Hémovigilance"], [330, "Prescription et surveillance des classes de médicaments les plus courantes chez l'adulte et chez l'enfant, hors anti-infectieux"]]}, {"title": "Urgences et défaillances viscérales aiguës", "items": [[331, "Arrêt cardiorespiratoire (ACR)"], [332, "État de choc. Principales étiologies : hypovolémique, septique, cardiogénique, anaphylactique"], [333, "Situations sanitaires exceptionnelles"], [334, "Prise en charge pré-hospitalière et à l'hôpital : brûlé, traumatisé sévère, traumatisé thoracique, traumatisé abdominal, traumatisé des membres et/ou du bassin, traumatisé du rachis ou vertébromédullaire, traumatisé crânien"], [335, "Orientation diagnostique et conduite à tenir devant un traumatisme maxillo-facial et oculaire"], [336, "Coma non traumatique chez l'adulte et chez l'enfant"], [337, "Principales intoxications aiguës"], [338, "Œdème de Quincke et anaphylaxie"], [339, "Syndromes coronariens aigus (SCA)"], [340, "Accidents vasculaires cérébraux (AVC)"], [341, "Hémorragie méningée"], [342, "Malaise, perte de connaissance, crise convulsive chez l'adulte"], [343, "État confusionnel et trouble de conscience chez l'adulte et chez l'enfant"], [344, "Prééclampsie"], [345, "Malaise grave du nourrisson et mort inattendue du nourrisson"], [346, "Convulsions chez le nourrisson et chez l'enfant"], [347, "Rétention aiguë d'urine"], [348, "Insuffisance rénale aiguë, anurie"], [349, "Infection aiguë des parties molles (abcès, panaris, phlegmon des gaines)"], [350, "Grosse jambe rouge aiguë"], [351, "Agitation et délire aigus"], [352, "Crise d'angoisse aiguë et attaque de panique"], [353, "Risque et conduite suicidaires chez l'enfant, l'adolescent et l'adulte : identification et prise en charge"], [354, "Syndrome occlusif de l'enfant et de l'adulte"], [355, "Hémorragie digestive"], [356, "Appendicite de l'enfant et de l'adulte"], [357, "Péritonite aiguë chez l'enfant et chez l'adulte"], [358, "Pancréatite aiguë"], [359, "Détresse et insuffisance respiratoire aiguë du nourrisson, de l'enfant et de l'adulte"], [360, "Pneumothorax"], [361, "Lésions péri-articulaires et ligamentaires du genou, de la cheville et de l'épaule"], [362, "Prothèses et ostéosynthèses"], [363, "Fractures fréquentes de l'adulte et du sujet âgé"], [364, "Fractures chez l'enfant : particularités épidémiologiques, diagnostiques et thérapeutiques"], [365, "Surveillance d'un malade sous plâtre/résine, diagnostiquer une complication"], [366, "Exposition accidentelle aux liquides biologiques : conduite à tenir"], [367, "Impact de l'environnement sur la santé"]]}];
+const SHORT = ["Exercice médical", "Femme et enfant", "Santé mentale", "Neuro, yeux, peau", "Handicap et douleur", "Infectieux et travail", "Inflammation et sang", "Circulation et métabolisme", "Cancérologie", "Bon usage du médicament", "Urgences"];
+const KEY = "edn-items-progress-v1";
+const CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const CHEV = '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+
+let state = { done: {}, collapsed: {}, theme: null };
+let storageOk = true;
+let filter = "all", query = "";
+let undoSnapshot = null, toastTimer = null;
+
+/* ---------- Sauvegarde ---------- */
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+      state.done = s.done || {};
+      state.collapsed = s.collapsed || {};
+      state.theme = s.theme || null;
+    }
+  } catch (e) { storageOk = false; }
+}
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+    const t = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    document.getElementById("savedTxt").textContent = "Sauvegardé à " + t;
+  } catch (e) {
+    storageOk = false;
+    document.getElementById("banner").hidden = false;
+  }
+}
+window.addEventListener("pagehide", save);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") save(); });
+
+/* ---------- Affichage ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const total = DATA.reduce((n, t) => n + t.items.length, 0);
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function build() {
+  const themes = $("#themes"), nav = $("#nav"), chips = $("#chips");
+  DATA.forEach((t, ti) => {
+    const sec = document.createElement("section");
+    sec.className = "theme"; sec.id = "t" + ti; sec.dataset.t = ti;
+    sec.innerHTML = `
+      <div class="theme-head">
+        <h3 class="th">
+          <button class="theme-toggle" type="button" aria-expanded="true" aria-controls="b${ti}">
+            <span class="cnt"></span>
+            <span class="theme-title"><span class="t">${esc(t.title)}</span><span class="mini"><i></i></span></span>
+            ${CHEV}
+          </button>
+        </h3>
+        <button class="text-btn" type="button" data-act="all">Valider le thème</button>
+      </div>
+      <div class="theme-body" id="b${ti}">
+        <ul class="items">
+          ${t.items.map(([n, name]) => `
+          <li class="item" data-n="${n}" data-s="${esc((n + " " + name).toLowerCase())}">
+            <label>
+              <span class="num">${n}</span>
+              <input type="checkbox" data-n="${n}" aria-label="Valider l'item ${n}">
+              <span class="box">${CHECK}</span>
+              <span class="txt"><span class="name">${esc(name)}</span><span class="when" hidden></span></span>
+            </label>
+          </li>`).join("")}
+        </ul>
+        <div class="theme-empty" hidden>Aucun item de ce thème ne correspond au filtre.</div>
+      </div>`;
+    themes.appendChild(sec);
+
+    const li = document.createElement("li");
+    li.innerHTML = `<a href="#t${ti}" data-t="${ti}"><span>${esc(t.title)}</span><b></b></a>`;
+    nav.appendChild(li);
+
+    const a = document.createElement("a");
+    a.href = "#t" + ti; a.dataset.t = ti;
+    a.innerHTML = `${esc(SHORT[ti] || t.title)} <b></b>`;
+    chips.appendChild(a);
+  });
+}
+
+const fmtDate = ts => new Date(ts).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+
+function refresh() {
+  let gDone = 0;
+  DATA.forEach((t, ti) => {
+    const sec = $("#t" + ti);
+    let done = 0, shown = 0;
+    sec.querySelectorAll(".item").forEach(li => {
+      const n = li.dataset.n, ts = state.done[n], isDone = !!ts;
+      li.querySelector("input").checked = isDone;
+      li.classList.toggle("done", isDone);
+      const when = li.querySelector(".when");
+      when.hidden = !isDone;
+      if (isDone) when.textContent = "Validé le " + fmtDate(ts);
+      if (isDone) done++;
+      const match = (!query || li.dataset.s.includes(query)) &&
+        (filter === "all" || (filter === "done" ? isDone : !isDone));
+      li.hidden = !match;
+      if (match) shown++;
+    });
+    gDone += done;
+    const len = t.items.length, all = done === len;
+    sec.querySelector(".cnt").textContent = `${done}/${len}`;
+    sec.querySelector(".mini i").style.transform = `scaleX(${done / len})`;
+    sec.querySelector(".theme-empty").hidden = shown > 0 || !(query || filter !== "all");
+    const btn = sec.querySelector("[data-act]");
+    btn.dataset.act = all ? "none" : "all";
+    btn.textContent = all ? "Retirer les validations" : "Valider le thème";
+    sec.classList.toggle("collapsed", !!state.collapsed[ti]);
+    sec.querySelector(".theme-toggle").setAttribute("aria-expanded", String(!state.collapsed[ti]));
+    sec.hidden = (query || filter !== "all") && shown === 0;
+
+    const a = $(`#nav a[data-t="${ti}"]`);
+    a.querySelector("b").textContent = `${done}/${len}`;
+    a.classList.toggle("complete", all);
+    $(`#chips a[data-t="${ti}"] b`).textContent = `${done}/${len}`;
+  });
+
+  const pct = Math.round(gDone / total * 100);
+  $("#gDone").textContent = gDone;
+  $("#gTotal").textContent = total;
+  $("#gPct").textContent = pct + " %";
+  const bar = $("#gBar");
+  bar.setAttribute("aria-valuenow", pct);
+  bar.setAttribute("aria-valuetext", `${gDone} items sur ${total} validés`);
+  bar.firstElementChild.style.transform = `scaleX(${gDone / total})`;
+  $("#complete").hidden = gDone !== total;
+  $("#empty").hidden = [...document.querySelectorAll(".theme")].some(s => !s.hidden);
+}
+
+/* ---------- Actions ---------- */
+function snapshot() { undoSnapshot = JSON.stringify(state.done); }
+function toast(msg) {
+  $("#toastMsg").textContent = msg;
+  const t = $("#toast");
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 6000);
+}
+function commit() { save(); refresh(); }
+
+document.addEventListener("change", e => {
+  const cb = e.target.closest('.item input[type="checkbox"]');
+  if (!cb) return;
+  const n = cb.dataset.n;
+  if (cb.checked) state.done[n] = Date.now(); else delete state.done[n];
+  commit();
+});
+
+document.addEventListener("click", e => {
+  const tog = e.target.closest(".theme-toggle");
+  if (tog) {
+    const ti = tog.closest(".theme").dataset.t;
+    if (state.collapsed[ti]) delete state.collapsed[ti]; else state.collapsed[ti] = true;
+    commit();
+    return;
+  }
+  const act = e.target.closest("[data-act]");
+  if (act) {
+    const ti = +act.closest(".theme").dataset.t;
+    snapshot();
+    const items = DATA[ti].items;
+    if (act.dataset.act === "all") {
+      const now = Date.now();
+      items.forEach(([n]) => { if (!state.done[n]) state.done[n] = now; });
+      toast("Thème validé");
+    } else {
+      items.forEach(([n]) => delete state.done[n]);
+      toast("Validations retirées");
+    }
+    commit();
+    return;
+  }
+  const f = e.target.closest(".seg button");
+  if (f) {
+    filter = f.dataset.f;
+    document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b === f)));
+    refresh();
+  }
+});
+
+$("#toastUndo").addEventListener("click", () => {
+  if (undoSnapshot) { state.done = JSON.parse(undoSnapshot); undoSnapshot = null; commit(); }
+  $("#toast").classList.remove("show");
+});
+$("#q").addEventListener("input", e => { query = e.target.value.trim().toLowerCase(); refresh(); });
+
+/* ---------- Export / import ---------- */
+$("#btnExport").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify({ version: 1, ...state }, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "progression-edn.json";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$("#btnImport").addEventListener("click", () => $("#fileIn").click());
+$("#fileIn").addEventListener("change", async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const s = JSON.parse(await file.text());
+    if (!s || typeof s.done !== "object") throw new Error("format");
+    snapshot();
+    state.done = s.done; state.collapsed = s.collapsed || {};
+    commit();
+    toast("Progression importée");
+  } catch (err) { toast("Fichier invalide : choisissez un export de ce site."); }
+  e.target.value = "";
+});
+
+/* ---------- Clair / sombre ---------- */
+function applyTheme() {
+  if (state.theme) document.documentElement.setAttribute("data-theme", state.theme);
+  else document.documentElement.removeAttribute("data-theme");
+}
+$("#btnTheme").addEventListener("click", () => {
+  const dark = state.theme ? state.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  state.theme = dark ? "light" : "dark";
+  applyTheme(); save();
+});
+
+/* ---------- Thème actif dans le sommaire ---------- */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(en => {
+    if (en.isIntersecting) {
+      document.querySelectorAll("#nav a").forEach(a => a.classList.toggle("active", a.dataset.t === en.target.dataset.t));
+    }
+  });
+}, { rootMargin: "-150px 0px -60% 0px" });
+
+/* ---------- Démarrage ---------- */
+load();
+applyTheme();
+build();
+document.querySelectorAll(".theme").forEach(s => io.observe(s));
+if (!storageOk) $("#banner").hidden = false;
+refresh();
+</script>
+</body>
+</html>
